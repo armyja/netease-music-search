@@ -33,8 +33,8 @@
     }
 
     .song-item {
-      width: 150px;
-      margin: 10px;
+      width: 100px;
+      margin: 0px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -75,6 +75,23 @@
       margin-bottom: 20px;
       position: fixed;
     }
+
+    @media (max-width: 768px) {
+      .song-item {
+        width: 16.66%;
+        /* 在手机屏幕上调整宽度以展示6张图片 */
+        font-size: 12px;
+        /* 调整字体大小 */
+      }
+
+      .album-cover {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      /* 其他适配手机屏幕的样式 */
+    }
   </style>
 </head>
 
@@ -85,11 +102,13 @@
       <input type="number" v-model="threshold" min="0" max="100" step="1" @input="filterByColor">
       <button @click="resetFilter">重置筛选</button>
       <button @click="exclude">排除</button>
+      <button @click="loadColor(1)">加载颜色</button>
+      <button @click="show_song_info = !show_song_info">{{show_song_info? '隐藏信息' : '显示信息'}}</button>
     </div>
     <div v-for="item in filteredSongs" :key="item.id" class="song-item" ref="songItems">
-      <img 
-      crossOrigin="anonymous"  v-lazy="item.albumImageUrl + '?param=200y200'" :alt="item.albumName" class="album-cover lazy" @load="getAverageColor($event, item)">
-      <div class="song-info">
+      <img crossOrigin="anonymous" v-lazy="item.albumImageUrl + '?param=100y100'" :alt="item.albumName"
+        class="album-cover lazy" @load="getAverageColor($event, item)">
+      <div class="song-info" v-show="show_song_info">
         <h3>{{ item.name }}</h3>
         <p>歌手: {{ item.artists.map(artist => artist.name).join(', ') }}</p>
         <p>专辑: {{ item.albumName }}</p>
@@ -104,7 +123,7 @@
       data() {
         return {
           songs: songsData,
-          lock: false,
+          show_song_info: false,
           filteredSongs: songsData,
           excludeSongs: new Set(),
           selectedColor: '#000000',
@@ -156,24 +175,9 @@
             return song.averageColor && this.colorDistance(song.averageColor, this.selectedColor) < this.threshold && !this.excludeSongs.has(song.id);
           }).sort((x, y) => x.albumId - y.albumId);
         },
-        resetFilter(flag = 1) {
+        resetFilter() {
           this.excludeSongs = new Set();
           this.filteredSongs = this.songs;
-          const that = this;
-          let i = 0;
-          for (; i < this.songs.length; i++) {
-            const song = this.songs[flag ? this.songs.length - 1 - i : i];
-            if (!song.averageColor) {
-              this.scrollToSong(song); // 如果 averageColor 为空，滚动到该歌曲位置
-              setTimeout(() => {
-                that.resetFilter(1 - flag);
-              }, 0); // 500毫秒的延迟，可以根据需要调整
-              return;
-            }
-          }
-          if (i == this.songs.length) {
-            alert("加载完毕")
-          }
         },
         exclude() {
           this.filteredSongs.forEach(song => {
@@ -181,6 +185,23 @@
           });
           this.threshold += 2;
           this.filterByColor();
+        },
+        loadColor(flag = 1) {
+          const that = this;
+          let i = 0;
+          for (; i < this.songs.length; i++) {
+            const song = this.songs[flag ? this.songs.length - 1 - i : i];
+            if (!song.averageColor) {
+              this.scrollToSong(song); // 如果 averageColor 为空，滚动到该歌曲位置
+              setTimeout(() => {
+                that.loadColor(1 - flag);
+              }, 500); // 500毫秒的延迟，可以根据需要调整
+              return;
+            }
+          }
+          if (i == this.songs.length) {
+            alert("加载完毕")
+          }
         }
       },
       directives: {
