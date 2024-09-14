@@ -17,6 +17,7 @@
     body {
       overflow-y: auto;
       overflow-x: hidden;
+      font-size: 0.4em;
     }
 
     #app {
@@ -32,7 +33,7 @@
     }
 
     .song-item {
-      width: 300px;
+      width: 150px;
       margin: 10px;
       display: flex;
       flex-direction: column;
@@ -41,8 +42,8 @@
     }
 
     .album-cover {
-      width: 200px;
-      height: 200px;
+      width: 100px;
+      height: 100px;
       object-fit: cover;
       margin-bottom: 10px;
       transition: opacity 0.3s;
@@ -83,8 +84,9 @@
       <input type="color" v-model="selectedColor">
       <input type="number" v-model="threshold" min="0" max="100" step="1" @input="filterByColor">
       <button @click="resetFilter">重置筛选</button>
+      <button @click="exclude">排除</button>
     </div>
-    <div v-for="item in filteredSongs" :key="item.id" class="song-item">
+    <div v-for="item in filteredSongs" :key="item.id" class="song-item" ref="songItems">
       <img 
       crossOrigin="anonymous"  v-lazy="item.albumImageUrl + '?param=200y200'" :alt="item.albumName" class="album-cover lazy" @load="getAverageColor($event, item)">
       <div class="song-info">
@@ -102,9 +104,11 @@
       data() {
         return {
           songs: songsData,
+          lock: false,
           filteredSongs: songsData,
+          excludeSongs: new Set(),
           selectedColor: '#000000',
-          threshold: 10 // 默认阈值
+          threshold: 50 // 默认阈值
         }
       },
       methods: {
@@ -116,15 +120,15 @@
             canvas.width = img.width;
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0, img.width, img.height);
-            
+
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imageData.data;
             let r = 0, g = 0, b = 0;
 
             for (let i = 0; i < data.length; i += 4) {
               r += data[i];
-              g += data[i+1];
-              b += data[i+2];
+              g += data[i + 1];
+              b += data[i + 2];
             }
 
             r = Math.floor(r / (data.length / 4));
@@ -134,16 +138,49 @@
             item.averageColor = chroma([r, g, b]).hex();
           }
         },
+        scrollToSong(item) {
+          if (item.averageColor) {
+            return;
+          }
+          const index = this.songs.indexOf(item);
+          const songElements = this.$refs.songItems;
+          if (songElements && songElements[index]) {
+            songElements[index].scrollIntoView({ block: 'start' });
+          }
+        },
         colorDistance(color1, color2) {
           return chroma.distance(color1, color2);
         },
         filterByColor() {
-          this.filteredSongs = this.songs.filter(song => 
-            song.averageColor && this.colorDistance(song.averageColor, this.selectedColor) < this.threshold
-          );
+          this.filteredSongs = this.songs.filter(song => {
+            return song.averageColor && this.colorDistance(song.averageColor, this.selectedColor) < this.threshold && !this.excludeSongs.has(song.id);
+          }).sort((x, y) => x.albumId - y.albumId);
         },
-        resetFilter() {
+        resetFilter(flag = 1) {
+          this.excludeSongs = new Set();
           this.filteredSongs = this.songs;
+          const that = this;
+          let i = 0;
+          for (; i < this.songs.length; i++) {
+            const song = this.songs[flag ? this.songs.length - 1 - i : i];
+            if (!song.averageColor) {
+              this.scrollToSong(song); // 如果 averageColor 为空，滚动到该歌曲位置
+              setTimeout(() => {
+                that.resetFilter(1 - flag);
+              }, 0); // 500毫秒的延迟，可以根据需要调整
+              return;
+            }
+          }
+          if (i == this.songs.length) {
+            alert("加载完毕")
+          }
+        },
+        exclude() {
+          this.filteredSongs.forEach(song => {
+            this.excludeSongs.add(song.id);
+          });
+          this.threshold += 2;
+          this.filterByColor();
         }
       },
       directives: {
