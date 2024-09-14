@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>音乐列表</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"></script>
   <style>
     html,
     body {
@@ -68,13 +69,24 @@
       content: "";
       flex: auto;
     }
+
+    .color-filter {
+      margin-bottom: 20px;
+      position: fixed;
+    }
   </style>
 </head>
 
 <body>
   <div id="app">
-    <div v-for="item in songs" :key="item.id" class="song-item">
-      <img v-lazy="item.albumImageUrl + '?param=200y200'" :alt="item.albumName" class="album-cover lazy">
+    <div class="color-filter">
+      <input type="color" v-model="selectedColor">
+      <input type="number" v-model="threshold" min="0" max="100" step="1" @input="filterByColor">
+      <button @click="resetFilter">重置筛选</button>
+    </div>
+    <div v-for="item in filteredSongs" :key="item.id" class="song-item">
+      <img 
+      crossOrigin="anonymous"  v-lazy="item.albumImageUrl + '?param=200y200'" :alt="item.albumName" class="album-cover lazy" @load="getAverageColor($event, item)">
       <div class="song-info">
         <h3>{{ item.name }}</h3>
         <p>歌手: {{ item.artists.map(artist => artist.name).join(', ') }}</p>
@@ -89,7 +101,49 @@
     const app = Vue.createApp({
       data() {
         return {
-          songs: songsData
+          songs: songsData,
+          filteredSongs: songsData,
+          selectedColor: '#000000',
+          threshold: 10 // 默认阈值
+        }
+      },
+      methods: {
+        getAverageColor(event, item) {
+          const img = event.target;
+          if (img.complete) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0, img.width, img.height);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            let r = 0, g = 0, b = 0;
+
+            for (let i = 0; i < data.length; i += 4) {
+              r += data[i];
+              g += data[i+1];
+              b += data[i+2];
+            }
+
+            r = Math.floor(r / (data.length / 4));
+            g = Math.floor(g / (data.length / 4));
+            b = Math.floor(b / (data.length / 4));
+
+            item.averageColor = chroma([r, g, b]).hex();
+          }
+        },
+        colorDistance(color1, color2) {
+          return chroma.distance(color1, color2);
+        },
+        filterByColor() {
+          this.filteredSongs = this.songs.filter(song => 
+            song.averageColor && this.colorDistance(song.averageColor, this.selectedColor) < this.threshold
+          );
+        },
+        resetFilter() {
+          this.filteredSongs = this.songs;
         }
       },
       directives: {
