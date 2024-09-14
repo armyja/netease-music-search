@@ -107,7 +107,7 @@
     </div>
     <div v-for="item in filteredSongs" :key="item.id" class="song-item" ref="songItems">
       <img crossOrigin="anonymous" v-lazy="item.albumImageUrl + '?param=200y200'" :alt="item.albumName"
-        class="album-cover lazy" @load="getAverageColor($event, item)">
+        class="album-cover lazy" @load="getAverageColor($event, item)" @dblclick.native="openUrl(item.id)">
 
       <div style="display: flex; justify-content: space-around;">
         <div v-for="color in item.averageColors" :key="color"
@@ -146,6 +146,9 @@
         };
       },
       methods: {
+        openUrl(id) {
+          window.open(`https://music.163.com/#/song?id=` + id)
+        },
         getAverageColor(event, item) {
           const img = event.target;
           if (img.complete) {
