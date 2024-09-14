@@ -102,7 +102,7 @@
       <input type="number" v-model="threshold" min="0" max="100" step="1" @input="filterByColor">
       <button @click="resetFilter">重置筛选</button>
       <button @click="exclude">排除</button>
-      <button @click="loadColor(1)">加载颜色</button>
+      <button @click="loadColor">加载颜色</button>
       <button @click="show_song_info = !show_song_info">{{show_song_info? '隐藏信息' : '显示信息'}}</button>
     </div>
     <div v-for="item in filteredSongs" :key="item.id" class="song-item" ref="songItems">
@@ -186,15 +186,15 @@
           this.threshold += 2;
           this.filterByColor();
         },
-        loadColor(flag = 1) {
+        loadColor() {
           const that = this;
           let i = 0;
           for (; i < this.songs.length; i++) {
-            const song = this.songs[flag ? this.songs.length - 1 - i : i];
+            const song = this.songs[i];
             if (!song.averageColor) {
               this.scrollToSong(song); // 如果 averageColor 为空，滚动到该歌曲位置
               setTimeout(() => {
-                that.loadColor(1 - flag);
+                that.loadColor();
               }, 500); // 500毫秒的延迟，可以根据需要调整
               return;
             }
