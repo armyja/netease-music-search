@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音乐列表</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    body {
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    #app {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      /* 改为flex-start */
+      margin: -10px;
+      /* 负边距，用于抵消子元素的边距 */
+      box-sizing: border-box;
+      width: 100%;
+      padding: 10px;
+    }
+
+    .song-item {
+      width: 300px;
+      margin: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .album-cover {
+      width: 200px;
+      height: 200px;
+      object-fit: cover;
+      margin-bottom: 10px;
+      transition: opacity 0.3s;
+    }
+
+    .album-cover.lazy {
+      opacity: 0.5;
+    }
+
+    .song-info {
+      width: 100%;
+    }
+
+    .song-info h3 {
+      margin-bottom: 5px;
+    }
+
+    .song-info p {
+      margin: 5px 0;
+    }
+
+    /* 添加以下代码 */
+    #app::after {
+      content: "";
+      flex: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <div v-for="item in songs" :key="item.id" class="song-item">
+      <img v-lazy="item.albumImageUrl + '?param=200y200'" :alt="item.albumName" class="album-cover lazy">
+      <div class="song-info">
+        <h3>{{ item.name }}</h3>
+        <p>歌手: {{ item.artists.map(artist => artist.name).join(', ') }}</p>
+        <p>专辑: {{ item.albumName }}</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="data.js"></script>
+  <script>
+    const app = Vue.createApp({
+      data() {
+        return {
+          songs: songsData
+        }
+      },
+      directives: {
+        lazy: {
+          mounted(el, binding) {
+            function loadImage() {
+              el.src = binding.value
+              el.classList.remove('lazy')
+            }
+
+            function handleIntersect(entries, observer) {
+              entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                  loadImage()
+                  observer.unobserve(el)
+                }
+              })
+            }
+
+            function createObserver() {
+              const options = {
+                root: null,
+                threshold: 0
+              }
+              const observer = new IntersectionObserver(handleIntersect, options)
+              observer.observe(el)
+            }
+
+            if (window.IntersectionObserver) {
+              createObserver()
+            } else {
+              loadImage()
+            }
+          }
+        }
+      }
+    })
+
+    app.mount('#app')
+  </script>
+</body>
+
+</html>
